@@ -13,7 +13,7 @@ def load_data(messages_filepath: str,
         categories_filepath (str): path of the categories dataset
 
     Returns:
-        pd.DataFrame: The merged dataset using the messages and categories
+        pd.DataFrame: the merged dataset using the messages and categories
         dataset
     """
     messages = pd.read_csv(messages_filepath)
@@ -26,10 +26,10 @@ def clean_data(df: pd.DataFrame):
     the main dataset and than those are concatenated
 
     Args:
-        df (pd.DataFrame): The merged messages and categories(in one column)
+        df (pd.DataFrame): the merged messages and categories(in one column)
 
     Returns:
-        pd.DataFrame: The main messages with the new separated
+        pd.DataFrame: the main messages with the new separated
         categories(one per column)
     """
     categories = df['categories'].str.split(';', expand=True)

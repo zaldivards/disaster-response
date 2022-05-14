@@ -20,7 +20,16 @@ from sqlalchemy import create_engine
 nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords'])
 
 
-def load_data(database_filepath) -> Tuple[np.array, np.array, Iterable]:
+def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
+    """Loads the preprocessed dataset from sqlite
+
+    Args:
+        database_filepath (str): The path of the database
+
+    Returns:
+        Tuple[np.array, np.array, Iterable]: Tuple with the dependent and
+        independent variables, and the categories' labels
+    """
     engine = create_engine(f'sqlite:///{database_filepath}')
     df = pd.read_sql('SELECT * from messages', engine)
     X = df.message.values
@@ -28,7 +37,16 @@ def load_data(database_filepath) -> Tuple[np.array, np.array, Iterable]:
     return X, Y.values, Y.columns
 
 
-def tokenize(text):
+def tokenize(text: str) -> list:
+    """Tokenizes by words, removes the stop words and applies a
+    lemmatizer process to prepare input for further processing
+
+    Args:
+        text (str): Input text
+
+    Returns:
+        list: tokenized input
+    """
     stop_words = stopwords.words('english')
     lemmatizer = WordNetLemmatizer()
 
@@ -45,7 +63,12 @@ def tokenize(text):
     return lemmatized
 
 
-def build_model():
+def build_model() -> Pipeline:
+    """Prepares a pipeline with components for preprocessing and modeling
+
+    Returns:
+        Pipeline: The pipeline which will be used as preprocessor and predictor
+    """
     model = MultiOutputClassifier(RandomForestClassifier(n_estimators=20))
     pipeline = Pipeline([
         ('vectorizer', CountVectorizer(tokenizer=tokenize)),
@@ -57,7 +80,14 @@ def build_model():
 
 def evaluate_model(model: Pipeline, X_test: np.ndarray,
                    Y_test: np.ndarray, category_names: Iterable):
-    
+    """Evaluates the model to look for bias and/or variance
+
+    Args:
+        model (Pipeline): the predictor
+        X_test (np.ndarray): the independent variable
+        Y_test (np.ndarray): _the dependent variable
+        category_names (Iterable): the categories' labels
+    """
     prediction = model.predict(X_test)
     
     report = classification_report(np.hstack(Y_test),
@@ -68,6 +98,12 @@ def evaluate_model(model: Pipeline, X_test: np.ndarray,
 
 def save_model(model: Union[MultiOutputClassifier, Pipeline],
                model_filepath: str):
+    """Saves the model as a pickle object
+
+    Args:
+        model (Union[MultiOutputClassifier, Pipeline]): the predictor
+        model_filepath (str): name of the pickle file
+    """
     with open(model_filepath, mode='bw') as f:
         pickle.dump(model, f)
 
