@@ -1,13 +1,12 @@
-import json
+import pickle
 
 import pandas as pd
-import plotly
 from flask import Flask, render_template, request
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from plotly.graph_objs import Bar
-from sklearn.externals import joblib
 from sqlalchemy import create_engine
+
+from graph.utils import get_serialized_graphs
 
 app = Flask(__name__)
 
@@ -25,11 +24,12 @@ def tokenize(text):
 
 
 # load data
-engine = create_engine('sqlite:///../data/YourDatabaseName.db')
-df = pd.read_sql_table('YourTableName', engine)
+engine = create_engine('sqlite:///../data/DisasterResponse.db')
+df = pd.read_sql_table('messages', engine)
 
 # load model
-model = joblib.load("../models/your_model_name.pkl")
+with open("../models/classifier.pkl", 'br') as f:
+    model = pickle.load(f)
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -38,36 +38,14 @@ model = joblib.load("../models/your_model_name.pkl")
 def index():
 
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
-
+    cats = pd.melt(df, id_vars=['genre'],
+                   value_vars=df.columns[4:],
+                   var_name='cats').groupby(['genre', 'cats'],
+                                            as_index=False)['value'].sum()
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
-    graphs = [
-        {
-            'data': [
-                Bar(
-                    x=genre_names,
-                    y=genre_counts
-                )
-            ],
-
-            'layout': {
-                'title': 'Distribution of Message Genres',
-                'yaxis': {
-                    'title': "Count"
-                },
-                'xaxis': {
-                    'title': "Genre"
-                }
-            }
-        }
-    ]
-
-    # encode plotly graphs in JSON
-    ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
-    graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
+    ids, graphJSON = get_serialized_graphs(genre_names, genre_counts, cats)
 
     # render web page with plotly graphs
     return render_template('master.html', ids=ids, graphJSON=graphJSON)
