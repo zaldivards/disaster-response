@@ -17,7 +17,7 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.pipeline import Pipeline
 from sqlalchemy import create_engine
 
-nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords'])
+nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords', 'omw-1.4'])
 
 
 def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
@@ -33,13 +33,15 @@ def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
     engine = create_engine(f'sqlite:///{database_filepath}')
     df = pd.read_sql('SELECT * from messages', engine)
     X = df.message.values
-    Y = df.loc[:, 'related':]
-    return X, Y.values, Y.columns
+    Y = df[df.columns[4:]]
+    columns = Y.columns
+    Y = np.where(Y == 2, 1, Y)    
+    return X, Y, columns
 
 
 def tokenize(text: str) -> list:
     """Tokenizes by words, removes the stop words and applies a
-    lemmatizer process to prepare input for further processing
+    lemmatizer process to prepare input for further processing 
 
     Args:
         text (str): Input text
@@ -90,9 +92,9 @@ def evaluate_model(model: Pipeline, X_test: np.ndarray,
     """
     prediction = model.predict(X_test)
     
-    report = classification_report(np.hstack(Y_test),
-                                   np.hstack(prediction),
-                                   labels=category_names)
+    report = classification_report(Y_test,
+                                   prediction,
+                                   target_names=category_names)
     print(report)
 
 
