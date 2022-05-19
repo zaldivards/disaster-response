@@ -6,7 +6,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from sqlalchemy import create_engine
 
-from graph.utils import get_serialized_graphs
+from graph.utils import cache_handler, get_serialized_graphs
 
 app = Flask(__name__)
 
@@ -31,21 +31,16 @@ df = pd.read_sql_table('messages', engine)
 with open("../models/classifier.pkl", 'br') as f:
     model = pickle.load(f)
 
+cache = cache_handler(df)
+
 
 # index webpage displays cool visuals and receives user input text for model
 @app.route('/')
 @app.route('/index')
 def index():
 
-    # extract data needed for visuals
-    genre_counts = df.groupby('genre').count()['message']
-    genre_names = list(genre_counts.index)
-    cats = pd.melt(df, id_vars=['genre'],
-                   value_vars=df.columns[4:],
-                   var_name='cats').groupby(['genre', 'cats'],
-                                            as_index=False)['value'].sum()
     # create visuals
-    ids, graphJSON = get_serialized_graphs(genre_names, genre_counts, cats)
+    ids, graphJSON = get_serialized_graphs(*cache())
 
     # render web page with plotly graphs
     return render_template('master.html', ids=ids, graphJSON=graphJSON)
