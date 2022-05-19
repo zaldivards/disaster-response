@@ -5,15 +5,17 @@ from flask import Flask, render_template, request
 from sqlalchemy import create_engine
 
 from graph.utils import cache_handler, get_serialized_graphs
+# used by the pipeline when it's loaded.
+from models.train_classifier import tokenize
 
 app = Flask(__name__)
 
 # load data
-engine = create_engine('sqlite:///../data/DisasterResponse.db')
+engine = create_engine('sqlite:///data/DisasterResponse.db')
 df = pd.read_sql_table('messages', engine)
 
 # load model
-with open("../models/classifier.pkl", 'br') as f:
+with open("./models/classifier.pkl", 'br') as f:
     model = pickle.load(f)
 
 cache = cache_handler(df)

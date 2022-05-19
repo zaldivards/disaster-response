@@ -17,7 +17,8 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.pipeline import Pipeline
 from sqlalchemy import create_engine
 
-nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords', 'omw-1.4'])
+nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 
+               'stopwords', 'omw-1.4'])
 
 
 def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
