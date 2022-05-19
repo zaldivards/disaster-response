@@ -2,26 +2,11 @@ import pickle
 
 import pandas as pd
 from flask import Flask, render_template, request
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
 from sqlalchemy import create_engine
 
 from graph.utils import cache_handler, get_serialized_graphs
 
 app = Flask(__name__)
-
-
-def tokenize(text):
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-
-    clean_tokens = []
-    for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
-    return clean_tokens
-
 
 # load data
 engine = create_engine('sqlite:///../data/DisasterResponse.db')
