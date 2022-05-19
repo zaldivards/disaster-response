@@ -27,9 +27,7 @@ This project is intended to analyze disaster data to build a model for an API th
         python models/train_classifier.py data/DisasterResponse.db models/classifier.pkl
         ```
 
-3. Go to `app` directory: `cd app`
-
-4. Run your web app: `python run.py`
+3. Run the web app: `python run.py`
 
 ## Other info
 The messages data is **skewed**, hence the accuracy of the predictions will be affected. You can check the bar plot to make sure of it.
