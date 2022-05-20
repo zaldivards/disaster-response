@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 from flask import Flask, render_template, request
 from sqlalchemy import create_engine
+from waitress import serve
 
 from graph.utils import cache_handler, get_serialized_graphs
 # used by the pipeline when it's loaded.
@@ -52,7 +53,7 @@ def go():
 
 
 def main():
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    serve(app, host='0.0.0.0', port=80)
 
 
 if __name__ == '__main__':
