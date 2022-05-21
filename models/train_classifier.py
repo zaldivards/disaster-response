@@ -9,16 +9,40 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sqlalchemy import create_engine
 
 nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger',
                'stopwords', 'omw-1.4'])
+
+
+class VerbCounterEstimator(BaseEstimator, TransformerMixin):
+
+    def count_verbs(self, text):
+        text = re.sub(r'[^a-zA-Z0-9]', ' ', text.lower()).strip()
+        tokens = word_tokenize(text)
+
+        pos_tags = nltk.pos_tag(tokens)
+
+        result = sum(part_speech[1] in ('VB', 'VBP')
+                     for part_speech in pos_tags)
+
+        return result
+
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, X):
+        # apply starting_verb function to all values in X
+        X_tagged = pd.Series(X).apply(self.count_verbs)
+
+        return pd.DataFrame(X_tagged)
 
 
 def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
@@ -73,15 +97,25 @@ def build_model() -> Pipeline:
         Pipeline: The pipeline which will be used as preprocessor and predictor
     """
     model = MultiOutputClassifier(RandomForestClassifier(n_estimators=20))
+
     pipeline = Pipeline([
-        ('vectorizer', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
+        ('feature_transformer', FeatureUnion([
+
+            ('text_pipeline', Pipeline([
+                ('vectorizer', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ])),
+            ('verb_counter', VerbCounterEstimator())
+        ])),
+
         ('classifier', model)
     ])
 
     parameters = {
         'classifier__estimator__n_estimators': [5, 10, 15, 20],
-        'tfidf__norm': ['l1', 'l2']
+        'classifier__estimator__max_depth': [None, 10, 25, 50, 100],
+        'tfidf__norm': ['l1', 'l2'],
+        'vectorizer__max_features': [None, 10, 50, 100]
     }
 
     cv = GridSearchCV(pipeline, param_grid=parameters)
