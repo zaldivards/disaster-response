@@ -12,12 +12,12 @@ from nltk.tokenize import word_tokenize
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.pipeline import Pipeline
 from sqlalchemy import create_engine
 
-nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 
+nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger',
                'stopwords', 'omw-1.4'])
 
 
@@ -36,13 +36,13 @@ def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
     X = df.message.values
     Y = df[df.columns[4:]]
     columns = Y.columns
-    Y = np.where(Y == 2, 1, Y)    
+    Y = np.where(Y == 2, 1, Y)
     return X, Y, columns
 
 
 def tokenize(text: str) -> list:
     """Tokenizes by words, removes the stop words and applies a
-    lemmatizer process to prepare input for further processing 
+    lemmatizer process to prepare input for further processing
 
     Args:
         text (str): Input text
@@ -54,10 +54,10 @@ def tokenize(text: str) -> list:
     lemmatizer = WordNetLemmatizer()
 
     text = re.sub(r'[^a-zA-Z0-9]', ' ', text.lower()).strip()
-    
+
     tokens = word_tokenize(text)
     tokens = [token for token in tokens if token not in stop_words]
-    
+
     lemmatized = []
     for token in tokens:
         processed_token = lemmatizer.lemmatize(token)
@@ -78,7 +78,15 @@ def build_model() -> Pipeline:
         ('tfidf', TfidfTransformer()),
         ('classifier', model)
     ])
-    return pipeline
+
+    parameters = {
+        'classifier__estimator__n_estimators': [5, 10, 15, 20],
+        'tfidf__norm': ['l1', 'l2']
+    }
+
+    cv = GridSearchCV(pipeline, param_grid=parameters)
+
+    return cv
 
 
 def evaluate_model(model: Pipeline, X_test: np.ndarray,
@@ -92,7 +100,7 @@ def evaluate_model(model: Pipeline, X_test: np.ndarray,
         category_names (Iterable): the categories' labels
     """
     prediction = model.predict(X_test)
-    
+
     report = classification_report(Y_test,
                                    prediction,
                                    target_names=category_names)
