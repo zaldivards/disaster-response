@@ -9,16 +9,44 @@ import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sqlalchemy import create_engine
 
-nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 
+nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger',
                'stopwords', 'omw-1.4'])
+
+
+class VerbCounterEstimator(BaseEstimator, TransformerMixin):
+
+    """Custom transformer for extra feature engineering.
+    Counts the number of verbs within the messages
+    """
+
+    def count_verbs(self, text) -> int:
+        text = re.sub(r'[^a-zA-Z0-9]', ' ', text.lower()).strip()
+        tokens = word_tokenize(text)
+
+        pos_tags = nltk.pos_tag(tokens)
+
+        result = sum(part_speech[1] in ('VB', 'VBP')
+                     for part_speech in pos_tags)
+
+        return result
+
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, X):
+        # apply starting_verb function to all values in X
+        X_tagged = pd.Series(X).apply(self.count_verbs)
+
+        return pd.DataFrame(X_tagged)
 
 
 def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
@@ -36,13 +64,13 @@ def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
     X = df.message.values
     Y = df[df.columns[4:]]
     columns = Y.columns
-    Y = np.where(Y == 2, 1, Y)    
+    Y = np.where(Y == 2, 1, Y)
     return X, Y, columns
 
 
 def tokenize(text: str) -> list:
     """Tokenizes by words, removes the stop words and applies a
-    lemmatizer process to prepare input for further processing 
+    lemmatizer process to prepare input for further processing
 
     Args:
         text (str): Input text
@@ -54,10 +82,10 @@ def tokenize(text: str) -> list:
     lemmatizer = WordNetLemmatizer()
 
     text = re.sub(r'[^a-zA-Z0-9]', ' ', text.lower()).strip()
-    
+
     tokens = word_tokenize(text)
     tokens = [token for token in tokens if token not in stop_words]
-    
+
     lemmatized = []
     for token in tokens:
         processed_token = lemmatizer.lemmatize(token)
@@ -66,19 +94,36 @@ def tokenize(text: str) -> list:
     return lemmatized
 
 
-def build_model() -> Pipeline:
+def build_model() -> GridSearchCV:
     """Prepares a pipeline with components for preprocessing and modeling
 
     Returns:
         Pipeline: The pipeline which will be used as preprocessor and predictor
     """
     model = MultiOutputClassifier(RandomForestClassifier(n_estimators=20))
+
     pipeline = Pipeline([
-        ('vectorizer', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
+        ('feature_transformer', FeatureUnion([
+
+            ('text_pipeline', Pipeline([
+                ('vectorizer', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ])),
+            ('verb_counter', VerbCounterEstimator())
+        ])),
+
         ('classifier', model)
     ])
-    return pipeline
+
+    parameters = {
+        'classifier__estimator__n_estimators': [5, 10, 15, 20],
+        'classifier__estimator__max_depth': [None, 10, 25, 50, 100],
+        'feature_transformer__text_pipeline__tfidf__norm': ['l1', 'l2'],
+        'feature_transformer__text_pipeline__vectorizer__max_features':
+            [None, 10, 50, 100]
+    }
+
+    return GridSearchCV(pipeline, param_grid=parameters)
 
 
 def evaluate_model(model: Pipeline, X_test: np.ndarray,
@@ -92,14 +137,14 @@ def evaluate_model(model: Pipeline, X_test: np.ndarray,
         category_names (Iterable): the categories' labels
     """
     prediction = model.predict(X_test)
-    
+
     report = classification_report(Y_test,
                                    prediction,
                                    target_names=category_names)
     print(report)
 
 
-def save_model(model: Union[MultiOutputClassifier, Pipeline],
+def save_model(model: Union[MultiOutputClassifier, Pipeline, GridSearchCV],
                model_filepath: str):
     """Saves the model as a pickle object
 
@@ -124,6 +169,8 @@ def main():
 
         print('Training model...')
         model.fit(X_train, Y_train)
+
+        print('Best params:', model.best_params_)
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)

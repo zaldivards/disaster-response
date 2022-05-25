@@ -7,7 +7,7 @@ from waitress import serve
 
 from graph.utils import cache_handler, get_serialized_graphs
 # used by the pipeline when it's loaded.
-from models.train_classifier import tokenize
+from models.train_classifier import VerbCounterEstimator, tokenize
 
 app = Flask(__name__)
 
