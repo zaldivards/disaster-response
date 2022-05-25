@@ -24,7 +24,11 @@ nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger',
 
 class VerbCounterEstimator(BaseEstimator, TransformerMixin):
 
-    def count_verbs(self, text):
+    """Custom transformer for extra feature engineering.
+    Counts the number of verbs within the messages
+    """
+
+    def count_verbs(self, text) -> int:
         text = re.sub(r'[^a-zA-Z0-9]', ' ', text.lower()).strip()
         tokens = word_tokenize(text)
 
@@ -90,7 +94,7 @@ def tokenize(text: str) -> list:
     return lemmatized
 
 
-def build_model() -> Pipeline:
+def build_model() -> GridSearchCV:
     """Prepares a pipeline with components for preprocessing and modeling
 
     Returns:
@@ -114,13 +118,12 @@ def build_model() -> Pipeline:
     parameters = {
         'classifier__estimator__n_estimators': [5, 10, 15, 20],
         'classifier__estimator__max_depth': [None, 10, 25, 50, 100],
-        'tfidf__norm': ['l1', 'l2'],
-        'vectorizer__max_features': [None, 10, 50, 100]
+        'feature_transformer__text_pipeline__tfidf__norm': ['l1', 'l2'],
+        'feature_transformer__text_pipeline__vectorizer__max_features':
+            [None, 10, 50, 100]
     }
 
-    cv = GridSearchCV(pipeline, param_grid=parameters)
-
-    return cv
+    return GridSearchCV(pipeline, param_grid=parameters)
 
 
 def evaluate_model(model: Pipeline, X_test: np.ndarray,
@@ -141,7 +144,7 @@ def evaluate_model(model: Pipeline, X_test: np.ndarray,
     print(report)
 
 
-def save_model(model: Union[MultiOutputClassifier, Pipeline],
+def save_model(model: Union[MultiOutputClassifier, Pipeline, GridSearchCV],
                model_filepath: str):
     """Saves the model as a pickle object
 
@@ -166,6 +169,8 @@ def main():
 
         print('Training model...')
         model.fit(X_train, Y_train)
+
+        print('Best params:', model.best_params_)
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
