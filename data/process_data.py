@@ -6,14 +6,14 @@ from sqlalchemy import create_engine
 
 def load_data(messages_filepath: str,
               categories_filepath: str) -> pd.DataFrame:
-    """Loads the datasets from the filesystem
+    """Loads the datasets from the filesystem and merge to a single dataframe
 
     Args:
-        messages_filepath (str): path of the messages dataset
-        categories_filepath (str): path of the categories dataset
+        messages_filepath (str): path to the messages dataset
+        categories_filepath (str): path to the categories dataset
 
     Returns:
-        pd.DataFrame: the merged dataset using the messages and categories
+        pd.DataFrame: dataframe merging messages and categories
         dataset
     """
     messages = pd.read_csv(messages_filepath)
@@ -39,7 +39,10 @@ def clean_data(df: pd.DataFrame):
     categories = categories.apply(
         lambda series: series.str.extract(r'(\d)+')[0].astype('int8'))
     df = df.drop('categories', axis=1)
-    return pd.concat([df, categories], axis=1).drop_duplicates()
+    # the mask variable and pandas' mask method replace the value 2 with value 1
+    mask = categories == 2
+    categories_bin = categories.mask(mask, 1)
+    return pd.concat([df, categories_bin], axis=1).drop_duplicates()
 
 
 def save_data(df: pd.DataFrame, database_filename: str):
@@ -50,7 +53,7 @@ def save_data(df: pd.DataFrame, database_filename: str):
         database_filename (str): the database name
     """
     engine = create_engine(f'sqlite:///{database_filename}')
-    df.to_sql('messages', engine, index=False)
+    df.to_sql('messages', engine, index=False, if_exists='replace')
 
 
 def main():

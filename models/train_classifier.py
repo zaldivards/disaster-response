@@ -64,7 +64,6 @@ def load_data(database_filepath: str) -> Tuple[np.array, np.array, Iterable]:
     X = df.message.values
     Y = df[df.columns[4:]]
     columns = Y.columns
-    Y = np.where(Y == 2, 1, Y)
     return X, Y, columns
 
 
@@ -123,7 +122,7 @@ def build_model() -> GridSearchCV:
             [None, 10, 50, 100]
     }
 
-    return GridSearchCV(pipeline, param_grid=parameters)
+    return GridSearchCV(pipeline, param_grid=parameters, verbose=3)
 
 
 def evaluate_model(model: Pipeline, X_test: np.ndarray,
