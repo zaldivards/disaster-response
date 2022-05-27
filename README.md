@@ -11,16 +11,16 @@ Moreover, slow responses are a matter of concern in a disaster context. Therefor
 ## Files
 
 * data
-  |- disaster_categories.csv # the raw data containing the labels for each message
-  |- disaster_messages.csv # the raw data with the messages and its genres
-  |- process_data.py # the script that performs the ETL operation
+  - disaster_categories.csv # the raw data containing the labels for each message
+  - disaster_messages.csv # the raw data with the messages and its genres
+  - process_data.py # the script that performs the ETL operation
 * graph
-  |- utils.py # creates cached objects and builds serialized representations of the visuals
+  - utils.py # creates cached objects and builds serialized representations of the visuals
 * models
-  |- train_classifier.py # the script that builds and trains the model
+  - train_classifier.py # the script that builds and trains the model
 * templates
-  |- master.html # main page of web app
-  |- go.html # classification result page of web app
+  - master.html # main page of web app
+  - go.html # classification result page of web app
 * run.py # Flask file that runs the app
 * README.md
 * requirements.txt # project dependencies
